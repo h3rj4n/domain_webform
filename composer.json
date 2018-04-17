@@ -1,0 +1,14 @@
+{
+  "name": "drupal/domain_webform",
+  "type": "drupal-module",
+  "description": "Manage single webform for multiple domains",
+  "keywords": ["Drupal"],
+  "license": "GPL-2.0+",
+  "homepage": "https://www.drupal.org/project/domain_webform",
+  "minimum-stability": "dev",
+  "support": {
+    "issues": "https://www.drupal.org/project/issues/domain_webform",
+    "source": "http://cgit.drupalcode.org/domain_webform"
+  },
+  "require": { }
+}

@@ -1,0 +1,137 @@
+<?php
+
+/**
+ * @file
+ * Contains domain_webform.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function domain_webform_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the domain_webform module.
+    case 'help.page.domain_webform':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Manage single webform for multiple domains') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_entity_base_field_info().
+ *
+ * The domain field is required when the domain module is enabled. Otherwise
+ * submissions end up on the wrong domain. This field is added as separate
+ * database field for optimized querying.
+ *
+ * Alternative is a node_grants alternative / solution?
+ *
+ * @todo Is there any other way to add an extra un-deletable field to any
+ *   webform?
+ */
+function domain_webform_entity_base_field_info(\Drupal\Core\Entity\EntityTypeInterface $entity_type) {
+  if ($entity_type->id() == 'webform_submission') {
+    $fields = [];
+
+    $fields['domain_id'] = \Drupal\Core\Field\BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Domain'))
+      ->setDescription(t('The source of the submissions.'))
+      ->setSettings([
+        'target_type' => 'domain',
+      ]);
+
+    return $fields;
+  }
+}
+
+/**
+ * Implements hook_webform_submission_create().
+ */
+function domain_webform_webform_submission_create(\Drupal\webform\WebformSubmissionInterface $entity) {
+  $domain = \Drupal::getContainer()->get('domain.negotiator')->getActiveDomain();
+
+  if (!empty($domain)) {
+    $entity->set('domain_id', $domain->id());
+  }
+}
+
+/**
+ * Implements hook_entity_type_alter().
+ *
+ * @todo Is there any other way to alter the view?
+ */
+function domain_webform_entity_type_alter(array &$entity_types) {
+  /** @var $entity_types \Drupal\Core\Entity\EntityTypeInterface[] */
+  if ($entity_types['webform_submission']->getListBuilderClass() == 'Drupal\webform\WebformSubmissionListBuilder') {
+    $entity_types['webform_submission']->setListBuilderClass('Drupal\domain_webform\WebformSubmissionListBuilder');
+  }
+  else {
+    \Drupal::logger('domain_webform')->alert('Unable to overwrite the listbuilder class, already overwritten?', [
+      'BuilderClass' => $entity_types['webform_submission']->getListBuilderClass(),
+    ]);
+  }
+
+  if ($entity_types['webform_submission']->getStorageClass() == 'Drupal\webform\WebformSubmissionStorage') {
+    $entity_types['webform_submission']->setStorageClass('Drupal\domain_webform\WebformSubmissionStorage');
+  }
+  else {
+    \Drupal::logger('domain_webform')->alert('Unable to overwrite the storage class, already overwritten?', [
+      'StorageClass' => $entity_types['webform_submission']->getStorageClass(),
+    ]);
+  }
+}
+
+/**
+ * Implements hook_form_webform_submission_filter_form_alter().
+ */
+function domain_webform_form_webform_submission_filter_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state) {
+  $selected = \Drupal::request()->query->get('domain');
+
+  $options = ['' => t('All domains')];
+  /** @var \Drupal\domain\DomainInterface $domain */
+  foreach (\Drupal\domain\Entity\Domain::loadMultiple() as $domain) {
+    $options[$domain->id()] = $domain->label();
+  }
+
+  $form['filter']['search']['#weight'] = -5;
+  $form['filter']['state']['#weight'] = -4;
+  $form['filter']['domain'] = [
+    '#type' => 'select',
+    '#title_display' => 'hidden',
+    '#title' => t('Domain'),
+    '#options' => $options,
+    '#default_value' => ($selected && in_array($selected, array_keys($options))) ? $selected : NULL,
+    '#weight' => -3,
+  ];
+
+  $form['#submit'][] = 'domain_webform_form_webform_submission_filter_form_submit';
+}
+
+/**
+ * Submit handler for our custom field.
+ *
+ * @param $form
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ */
+function domain_webform_form_webform_submission_filter_form_submit($form, \Drupal\Core\Form\FormStateInterface $form_state) {
+  $form_state->getRedirect()->mergeOptions([
+    'query' => [
+      'domain' => $form_state->getValue('domain'),
+    ],
+  ]);
+}
+
+/**
+ * Implements hook_query_TAG_alter().
+ */
+function domain_webform_query_domain_webform_filter_alter(Drupal\Core\Database\Query\AlterableInterface $query) {
+  if ($domain = \Drupal::request()->query->get('domain')) {
+    $query->condition('webform_submission.domain_id', $domain);
+  }
+}
