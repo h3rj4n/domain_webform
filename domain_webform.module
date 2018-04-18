@@ -5,12 +5,10 @@
  * Contains domain_webform.module.
  */
 
-use Drupal\Core\Routing\RouteMatchInterface;
-
 /**
  * Implements hook_help().
  */
-function domain_webform_help($route_name, RouteMatchInterface $route_match) {
+function domain_webform_help($route_name, \Drupal\Core\Routing\RouteMatchInterface $route_match) {
   switch ($route_name) {
     // Main module help for the domain_webform module.
     case 'help.page.domain_webform':

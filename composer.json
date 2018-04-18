@@ -1,6 +1,6 @@
 {
   "name": "drupal/domain_webform",
-  "type": "drupal-module",
+  "type": "drupal-custom-module",
   "description": "Manage single webform for multiple domains",
   "keywords": ["Drupal"],
   "license": "GPL-2.0+",
