@@ -43,8 +43,8 @@ class WebformSubmissionListBuilder extends WebformSubListBuilder {
   /**
    * {@inheritdoc}
    */
-  protected function getQuery($keys = '', $state = '') {
-    $query = parent::getQuery($keys, $state);
+  protected function getQuery($keys = '', $state = '', $source_entity = '') {
+    $query = parent::getQuery($keys, $state, $source_entity);
 
     // Add a custom tag so we can limit the results.
     $query->addTag('domain_webform_filter');
